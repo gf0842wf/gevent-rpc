@@ -53,7 +53,6 @@ class EndPoint(gevent.Greenlet):
             try:
                 data = self.encode(msg)
                 self.transport.sendall(data)
-                print "send:", repr(data)
                 result = "ok"
             except Exception as e:
                 result = e

@@ -74,7 +74,9 @@ class Connection(object):
         else:
             self.conn.close()
             
-    def __getattr__(self, name, timeout=20):
+    def __getattr__(self, name):
+        if not name.startswith("RPC_"):
+            getattr(self, name)
         return lambda *args, **kw: self.call(name, args, kw)
 
 
