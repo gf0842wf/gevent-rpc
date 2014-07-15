@@ -53,7 +53,7 @@ class EndPoint(gevent.Greenlet):
             try:
                 data = self.encode(msg)
                 self.transport.sendall(data)
-                result = "ok"
+                result = "ok|%s" % str(msg)
             except Exception as e:
                 result = e
             async_result.set(result)
