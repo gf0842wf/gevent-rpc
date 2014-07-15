@@ -6,3 +6,7 @@
 
     客户端请求: [func_name(str), args, kwargs]
     服务端响应: [code, result/error_message] code:0-ok, other-error
+
+Useage:
+
+    见: demo.py
