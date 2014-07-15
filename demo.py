@@ -18,7 +18,8 @@ class TestRPCServer(RPCServer):
     
 
 if __name__ == "__main__":
-    TestRPCServer(7000).start()
+    s = TestRPCServer(7000)
+    s.start()
     
     c = Connection(("127.0.0.1", 7000), dumps, loads)
     print c.RPC_sleep(3) 
