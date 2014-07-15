@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from endpoint import EndPoint
-from cPickle import dumps, loads
 from gevent.event import AsyncResult
 from gevent.server import StreamServer
 import gevent
@@ -58,8 +57,6 @@ class RPCBot(EndPoint):
 
 
 class RPCServer(gevent.Greenlet):
-    dumps = dumps
-    loads = loads
     
     def __init__(self, port):
         self.port = port
@@ -81,7 +78,11 @@ class RPCServer(gevent.Greenlet):
 
 
 if __name__ == "__main__":
-    m = RPCServer(7000)
-    m.start()
+    from cPickle import dumps, loads
+
+    s = RPCServer(7000)
+    s.dumps = dumps
+    s.loads = loads
+    s.start()
     
     gevent.wait()
