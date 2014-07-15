@@ -6,18 +6,20 @@ from cPickle import dumps, loads
 from codec import FixEncoder, FixDecoder
 from gevent.event import AsyncResult
 from gevent.queue import Queue
-from functools import partial
 import gevent
 import sys
 
 
 class Connection(object):
+    """Connection 默认是短连接, 不支持重连"""
+    
     reconnect_delay = 5 # 断线重连延时
-    retry = 0 # 重试次数
+    timeout = 20 # 调用超时
     
     def __init__(self, address, dumps=None, loads=None):
         self.address = address
         self.conn = create_connection(address)
+        self.retry = 0 # 重试次数
         
         self.encode = FixEncoder(dumps).encode
         self.decoder = FixDecoder(loads)
@@ -39,33 +41,45 @@ class Connection(object):
             else:
                 gevent.sleep(self.retry + self.reconnect_delay)
                 
-    def call(self, name, args=(), kw={}, timeout=20):
+    def _call(self, name, args=(), kw={}):
         try:
             self.conn.sendall(self.encode([name, args, kw]))
-            while True:
-                data = timeout_partial(timeout, self.conn.recv, 128)
-                if isinstance(data, BaseException):
-                    print "timeout..."
-                    self.conn.close()
-                    return
-                if not data:
-                    print "closed..."
-                    self.conn.close()
-                    return
-                for msg in self.decoder.decode(data):
-                    flag, message = msg
-                    if flag == "msg":
-                        if timeout is not None: self.conn.close()
-                        return message
         except Exception as e:
-            print "Exception:", e
+            return e
+        
+        while True:
+            data = timeout_partial(self.timeout, self.conn.recv, 128)
+            if isinstance(data, BaseException):
+                print "timeout..."
+                return data
+            if not data:
+                print "closed..."
+                return
+            for msg in self.decoder.decode(data):
+                return msg
+                
+    def call(self, name, args=(), kw={}):
+        msg = self._call(name, args, kw)
+        if isinstance(msg, tuple) and len(msg) >= 2 and msg[0] == "msg":
+            if self.timeout is not None:
+                self.conn.close()
+            return msg[1]
+        print "err msg:", msg
+        if self.timeout is None:
+            self.reconnect()
+            msg = self._call(name, args, kw)
+            if isinstance(msg, tuple) and len(msg) >= 2 and msg[0] == "msg":
+                return msg[1]
+        else:
+            self.conn.close()
             
     def __getattr__(self, name, timeout=20):
-        return lambda *args, **kw: self.call(name, args, kw, timeout=timeout)
+        return lambda *args, **kw: self.call(name, args, kw)
 
 
 class Pool(object):
     """连接池:每个连接使用一个gevent队列的连接池
+    : Pool 默认是长连接, 支持重连
     """
     
     def __init__(self, args, n):
@@ -77,6 +91,7 @@ class Pool(object):
 
         for _ in xrange(n):
             c = Connection(*args)
+            c.timeout = None
             self.conns.append(c)
             q = Queue()
             self.queues.append(q)
@@ -93,7 +108,7 @@ class Pool(object):
         while True:
             [name, args, kw], result = q.peek()
             try:
-                rs = conn.call(name, args, kw, timeout=None)
+                rs = conn.call(name, args, kw)
                 if result:
                     result.set(rs)
             except:
@@ -121,8 +136,8 @@ class Pool(object):
         else:
             q.put(([name, args, kw], None))
             
-    def __getattr__(self, name, block=True):
-        return lambda *args, **kw: self.call(name, args, kw, block=block)
+    def __getattr__(self, name):
+        return lambda *args, **kw: self.call(name, args, kw)
 
     
 if __name__ == "__main__":
@@ -132,9 +147,7 @@ if __name__ == "__main__":
     
     args = (("127.0.0.1", 7000), dumps, loads)
     p = Pool(args, 6)
-    print p.call("RPC_echo", ("abc", ), {})
-    
-    print p.RPC_echo("abc")
+    print p.RPC_echo("efg")
     
     gevent.spawn(gevent.sleep, 10000).join()
 #     gevent.wait()
