@@ -76,7 +76,7 @@ class Connection(object):
             
     def __getattr__(self, name):
         if not name.startswith("RPC_"):
-            getattr(self, name)
+            return getattr(self, name)
         return lambda *args, **kw: self.call(name, args, kw)
 
 
@@ -141,7 +141,7 @@ class Pool(object):
             
     def __getattr__(self, name):
         if not name.startswith("RPC_"):
-            getattr(self, name)
+            return getattr(self, name)
         return lambda *args, **kw: self.call(name, args, kw)
 
     
