@@ -60,6 +60,8 @@ class RPCServer(gevent.Greenlet):
     
     def __init__(self, port):
         self.port = port
+        self.dumps = None
+        self.loads = None
         gevent.Greenlet.__init__(self)
 
     def _connection_handler(self, trans, address):
