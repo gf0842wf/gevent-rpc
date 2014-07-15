@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from endpoint import create_connection
+from delay import timeout_partial
 from cPickle import dumps, loads
 from codec import FixEncoder, FixDecoder
 from gevent.event import AsyncResult
 from gevent.queue import Queue
+from functools import partial
 import gevent
 import sys
 
@@ -24,10 +26,10 @@ class Connection(object):
         while True:
             self.conn.close()
             try:
-                print 'Trying reconnect..'
+                print "Trying reconnect.."
                 self.conn = create_connection(self.address)
                 self.retry = 0
-                print 'Reconneced.'
+                print "Reconneced."
                 break
             except:
                 self.retry += 1
@@ -37,25 +39,33 @@ class Connection(object):
             else:
                 gevent.sleep(self.retry + self.reconnect_delay)
                 
-    def call(self, name, args=(), kw={}, keep=False):
+    def call(self, name, args=(), kw={}, timeout=20):
         try:
             self.conn.sendall(self.encode([name, args, kw]))
             while True:
-                data = self.conn.recv(128)
-                print "data:", repr(data)
-                if not data:
+                data = timeout_partial(timeout, self.conn.recv, 128)
+                if isinstance(data, BaseException):
+                    print "timeout..."
                     self.conn.close()
+                    return
+                if not data:
+                    print "closed..."
+                    self.conn.close()
+                    return
                 for msg in self.decoder.decode(data):
                     flag, message = msg
                     if flag == "msg":
-                        if not keep: self.conn.close()
+                        if timeout is not None: self.conn.close()
                         return message
         except Exception as e:
             print "Exception:", e
+            
+    def __getattr__(self, name, timeout=20):
+        return lambda *args, **kw: self.call(name, args, kw, timeout=timeout)
 
 
 class Pool(object):
-    """[连接池] 每个连接使用一个gevent队列的连接池
+    """连接池:每个连接使用一个gevent队列的连接池
     """
     
     def __init__(self, args, n):
@@ -76,18 +86,18 @@ class Pool(object):
         assert len(self.conns) == n
     
     def loop(self, conn, q):
-        """
+        """循环任务
         : 队列格式: ([name, args, kw], result),
         : result是gevent的AsyncResult对象, result为空则非阻塞
         """
         while True:
             [name, args, kw], result = q.peek()
             try:
-                rs = conn.call(name, args, kw, keep=True)
+                rs = conn.call(name, args, kw, timeout=None)
                 if result:
                     result.set(rs)
             except:
-                print '[LastCall]:', name, args, kw
+                print "[LastCall]:", name, args, kw
                 if result:
                     result.set_exception(sys.exc_info()[1])
                 else:
@@ -110,17 +120,21 @@ class Pool(object):
             return result.get()
         else:
             q.put(([name, args, kw], None))
+            
+    def __getattr__(self, name, block=True):
+        return lambda *args, **kw: self.call(name, args, kw, block=block)
 
     
 if __name__ == "__main__":
     c = Connection(("127.0.0.1", 7000), dumps, loads)
-    print c.call("RPC_echo", ("abc", ), {})
+    print c.RPC_echo("abc")
     
     
     args = (("127.0.0.1", 7000), dumps, loads)
     p = Pool(args, 6)
     print p.call("RPC_echo", ("abc", ), {})
-    print p.conns
+    
+    print p.RPC_echo("abc")
     
     gevent.spawn(gevent.sleep, 10000).join()
 #     gevent.wait()

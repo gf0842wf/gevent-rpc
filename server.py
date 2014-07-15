@@ -37,7 +37,6 @@ class RPCBot(EndPoint):
         return [func, args, kw]
 
     def on_data(self, msg):
-        print "S:", msg
         rpc_param = self.rpcable(msg)
         print "P:", rpc_param
         async_result = AsyncResult()
@@ -77,7 +76,7 @@ class RPCServer(gevent.Greenlet):
     
     def _run(self):
         print("TCP server Listen at port {0}".format(self.port))
-        server = StreamServer(('0.0.0.0', self.port), self._connection_handler)
+        server = StreamServer(("0.0.0.0", self.port), self._connection_handler)
         server.serve_forever()
 
 
