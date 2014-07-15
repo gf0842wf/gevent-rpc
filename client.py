@@ -2,7 +2,6 @@
 
 from endpoint import create_connection
 from delay import timeout_partial
-from cPickle import dumps, loads
 from codec import FixEncoder, FixDecoder
 from gevent.event import AsyncResult
 from gevent.queue import Queue
@@ -146,6 +145,8 @@ class Pool(object):
 
     
 if __name__ == "__main__":
+    from cPickle import dumps, loads
+    
     c = Connection(("127.0.0.1", 7000), dumps, loads)
     print c.RPC_echo("abc")
     
