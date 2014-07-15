@@ -7,6 +7,8 @@ import gevent
 
 
 class TestRPCServer(RPCServer):
+    dumps = dumps
+    loads = loads
     
     def RPC_add(self, l, r):
         return l + r
