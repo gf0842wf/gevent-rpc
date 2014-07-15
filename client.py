@@ -64,7 +64,7 @@ class Connection(object):
             if self.timeout is not None:
                 self.conn.close()
             return msg[1]
-        print "err msg:", msg
+        print "Err msg:", msg
         if self.timeout is None:
             self.reconnect()
             msg = self._call(name, args, kw)
@@ -137,6 +137,8 @@ class Pool(object):
             q.put(([name, args, kw], None))
             
     def __getattr__(self, name):
+        if not name.startswith("RPC_"):
+            getattr(self, name)
         return lambda *args, **kw: self.call(name, args, kw)
 
     
