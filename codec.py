@@ -31,11 +31,11 @@ class FixDecoder(object):
                 raise StopIteration
             if len(buf) < 4:
                 yield ("short", "header")
-                continue
+                break
             length, = struct.unpack(">I", buf[:4])
-            if len(buf) < length:
+            if len(buf) < length + 4:
                 yield ("short", "message")
-                continue
+                break
             trunk = buf[4:4+length]
             buf = buf[4+length:]
             self._buf = buf
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     encode = FixEncoder(pickle.dumps).encode
     data = encode({"a":[1,2,3]})
     encoder = FixDecoder(pickle.loads)
-    for m in encoder.decode(data):
-        print m
-        
+    for d in data:
+        for m in encoder.decode(d):
+            print m
         
