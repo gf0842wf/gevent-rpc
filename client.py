@@ -15,6 +15,7 @@ class Connection(object):
     
     reconnect_delay = 5 # 断线重连延时
     timeout = 20 # 调用超时
+    keep_alive = False
     
     def __init__(self, address, dumps=None, loads=None):
         self.address = address
@@ -61,11 +62,11 @@ class Connection(object):
     def call(self, name, args=(), kw={}):
         msg = self._call(name, args, kw)
         if isinstance(msg, tuple) and len(msg) >= 2 and msg[0] == "msg":
-            if self.timeout is not None:
+            if not self.keep_alive:
                 self.conn.close()
             return msg[1]
         print "Err msg:", msg
-        if self.timeout is None:
+        if self.keep_alive:
             self.reconnect()
             msg = self._call(name, args, kw)
             if isinstance(msg, tuple) and len(msg) >= 2 and msg[0] == "msg":
@@ -91,7 +92,7 @@ class Pool(object):
 
         for _ in xrange(n):
             c = Connection(*args)
-            c.timeout = None
+            c.keep_alive = True
             self.conns.append(c)
             q = Queue()
             self.queues.append(q)
@@ -145,7 +146,6 @@ class Pool(object):
 if __name__ == "__main__":
     c = Connection(("127.0.0.1", 7000), dumps, loads)
     print c.RPC_echo("abc")
-    
     
     args = (("127.0.0.1", 7000), dumps, loads)
     p = Pool(args, 6)
