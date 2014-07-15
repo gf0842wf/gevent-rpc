@@ -19,6 +19,8 @@ class TestRPCServer(RPCServer):
 
 if __name__ == "__main__":
     s = TestRPCServer(7000)
+    s.dumps = dumps
+    s.loads = loads
     s.start()
     
     c = Connection(("127.0.0.1", 7000), dumps, loads)
