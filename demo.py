@@ -28,8 +28,15 @@ if __name__ == "__main__":
     
     args = (("127.0.0.1", 7000), dumps, loads)
     p = Pool(args, 6)
-    print p.RPC_echo("123")
-    print p.RPC_add(1, 2) # Pool 是长连接,不需要重连
-    # [0, 3] 其中 0-表示成功, 3-结果值
+    
+    def f1():
+        print p.RPC_echo("123") 
+    def f2():
+        print p.RPC_sleep(3) # # Pool 是长连接,不需要重连
+        
+    gevent.spawn(f1)
+    gevent.spawn(f2)
+    gevent.spawn(f1)
+    # [0, "123"] 其中 0-表示成功, "123"-结果值
     
     gevent.wait()
