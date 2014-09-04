@@ -44,16 +44,19 @@ class RPCBot(EndPoint):
             self.put_data(rpc_param, result)
         else:
             func, args, kw = rpc_param
+            
+        def calc():
             try:
                 data = [0, func(*args, **kw)]
             except Exception as e:
                 data = [8, str(e)]
             self.put_data(data, async_result)
-        result = async_result.get()
+            result = async_result.get()
+            print("RPCBot {0} result: {1}".format(self, result)) 
+            
+        gevent.spawn(calc)
         
 #         self.close() # 长连接rpc应该由客户端关闭?
-                
-        print("RPCBot {0} result: {1}".format(self, result)) 
 
 
 class RPCServer(gevent.Greenlet):
